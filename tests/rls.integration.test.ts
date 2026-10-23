@@ -13,12 +13,14 @@ let owner: SupabaseClient | undefined
 let rowId = ''
 let testInventoryId = ''
 let testDemandId = ''
+let testPhotoPath = ''
 
 afterAll(async () => {
   if (owner && rowId) {
     await owner.from('inventory_batches').update({ is_published: false }).eq('id', rowId)
     await owner.from('inventory_batches').delete().eq('id', rowId)
   }
+  if (owner && testPhotoPath) await owner.storage.from('inventory-photos').remove([testPhotoPath])
   if (serviceKey && url) {
     const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
     if (testInventoryId) {
@@ -74,5 +76,23 @@ describe('Supabase row-level access controls', () => {
     const { data: reconciled, error } = await seller.from('inventory_batches').select('available_quantity, reserved_quantity, sold_quantity').eq('id', testInventoryId).single()
     expect(error).toBeNull()
     expect(reconciled).toMatchObject({ available_quantity: 0, reserved_quantity: 1, sold_quantity: 0 })
+  })
+
+  it.skipIf(!enabled)('keeps a private inventory photo readable only by its owner', async () => {
+    owner = clientFor(tokenA!)
+    const other = clientFor(tokenB!)
+    const { data: authData, error: authError } = await owner.auth.getUser(tokenA!)
+    expect(authError).toBeNull()
+    testPhotoPath = `${authData.user!.id}/storage-rls-test/${crypto.randomUUID()}.png`
+    const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p6sAAAAASUVORK5CYII='), (char) => char.charCodeAt(0))
+    const file = new File([bytes.buffer], 'rls-check.png', { type: 'image/png' })
+    const upload = await owner.storage.from('inventory-photos').upload(testPhotoPath, file, { contentType: 'image/png' })
+    expect(upload.error).toBeNull()
+    const ownerRead = await owner.storage.from('inventory-photos').download(testPhotoPath)
+    expect(ownerRead.error).toBeNull()
+    expect(ownerRead.data).not.toBeNull()
+    const otherRead = await other.storage.from('inventory-photos').download(testPhotoPath)
+    expect(otherRead.error).not.toBeNull()
+    expect(otherRead.data).toBeNull()
   })
 })

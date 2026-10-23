@@ -16,6 +16,7 @@ export interface InventoryBatch {
   availableAt: string
   freshnessHours: number | null
   status: BatchStatus
+  photoPath?: string | null
 }
 
 export interface BuyerDemand {
