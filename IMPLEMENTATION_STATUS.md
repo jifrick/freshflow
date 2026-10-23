@@ -11,7 +11,9 @@
 - [x] RLS and concurrency integration tests authored; they require two isolated account tokens (and a test-only service role key for cleanup).
 - [x] TypeScript, lint, deterministic unit tests, production build, and secret-pattern check pass.
 - [x] Supabase security advisor reports no findings; database tables all have RLS enabled.
-- [ ] Google OAuth provider setup and real two-user workflow verification require test accounts/project OAuth configuration.
-- [ ] GitHub branch listing is unavailable because the configured remote cannot be reached from this environment; commit/push is pending.
+- [x] Commit `7fa7daf` pushed to `origin/main`; final working tree is clean.
+- [ ] Google OAuth provider setup and real two-user workflow verification require Google OAuth credentials and two isolated test accounts.
 
 **Important boundary:** Preview records are examples and never indicate actual demand, completed transactions, or recovered food. Live economic comparisons remain incomplete until every cost and delivery feasibility are confirmed. The Supabase project currently contains schema only, with no seeded records.
+
+**Latest checks:** `npm run typecheck`, `npm run lint`, `npm test` (6 passed, 2 integration tests skipped), `npm run build`, and Supabase security advisor (no findings).
