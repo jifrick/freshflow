@@ -63,7 +63,7 @@ grant select (
   id, owner_id, produce, quantity, available_quantity, reserved_quantity,
   sold_quantity, unit, location, quality, asking_price, available_at,
   freshness_hours, status, is_published, created_at, updated_at, photo_path,
-  harvested_or_purchased_at, archived_at
+  harvested_or_purchased_at, archived_at, moderation_status, moderation_submitted_at
 ) on public.inventory_batches to authenticated;
 
 create or replace view public.inventory_listings
@@ -72,7 +72,7 @@ as
 select id, owner_id, produce, quantity, available_quantity, reserved_quantity,
        sold_quantity, unit, location, quality, asking_price, available_at,
        freshness_hours, status, is_published, created_at, updated_at, photo_path,
-       harvested_or_purchased_at, archived_at
+       harvested_or_purchased_at, archived_at, moderation_status, moderation_submitted_at
 from public.inventory_batches;
 grant select on public.inventory_listings to authenticated;
 revoke all on public.inventory_listings from anon, public;
@@ -546,7 +546,7 @@ create table if not exists public.inventory_moderation_events (
 );
 alter table public.inventory_moderation_events enable row level security;
 create policy "Admins read inventory moderation history" on public.inventory_moderation_events
-  for select to authenticated using ((select auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+  for select to authenticated using ((select auth.jwt() -> 'app_metadata' ->> 'role') in ('admin', 'super_admin'));
 grant select on public.inventory_moderation_events to authenticated;
 revoke all on public.inventory_moderation_events from anon, public;
 
@@ -554,16 +554,18 @@ create or replace function private.admin_list_inventory_submissions()
 returns table (
   batch_id uuid, owner_id uuid, produce text, quantity numeric, unit text, location text,
   quality text, available_at timestamptz, harvested_or_purchased_at timestamptz,
-  freshness_hours integer, photo_path text, moderation_status text, submitted_at timestamptz
+  freshness_hours integer, photo_path text, moderation_status text, submitted_at timestamptz,
+  seller_phone text
 )
 language plpgsql security definer set search_path = ''
 as $$
 begin
-  if (select auth.uid()) is null or (select auth.jwt() -> 'app_metadata' ->> 'role') is distinct from 'admin'
+  if (select auth.uid()) is null or (select auth.jwt() -> 'app_metadata' ->> 'role') not in ('admin', 'super_admin')
     then raise exception 'Admin authorization required'; end if;
   return query select b.id, b.owner_id, b.produce, b.quantity, b.unit, b.location, b.quality,
     b.available_at, b.harvested_or_purchased_at, b.freshness_hours, b.photo_path,
-    b.moderation_status, coalesce(b.moderation_submitted_at, b.created_at)
+    b.moderation_status, coalesce(b.moderation_submitted_at, b.created_at),
+    null::text as seller_phone
   from public.inventory_batches b where b.moderation_status in ('pending_review', 'approved', 'rejected')
   order by (b.moderation_status <> 'pending_review'), b.updated_at desc;
 end;
@@ -574,7 +576,8 @@ create or replace function public.admin_list_inventory_submissions()
 returns table (
   batch_id uuid, owner_id uuid, produce text, quantity numeric, unit text, location text,
   quality text, available_at timestamptz, harvested_or_purchased_at timestamptz,
-  freshness_hours integer, photo_path text, moderation_status text, submitted_at timestamptz
+  freshness_hours integer, photo_path text, moderation_status text, submitted_at timestamptz,
+  seller_phone text
 )
 language sql security invoker set search_path = ''
 as $$ select * from private.admin_list_inventory_submissions(); $$;
@@ -586,10 +589,12 @@ returns void language plpgsql security definer set search_path = ''
 as $$
 declare v_batch public.inventory_batches%rowtype;
 begin
-  if (select auth.uid()) is null or (select auth.jwt() -> 'app_metadata' ->> 'role') is distinct from 'admin'
+  if (select auth.uid()) is null or (select auth.jwt() -> 'app_metadata' ->> 'role') not in ('admin', 'super_admin')
     then raise exception 'Admin authorization required'; end if;
   if p_decision is null or p_decision not in ('approved', 'rejected') then
     raise exception 'Choose approve or reject'; end if;
+  if p_decision = 'rejected' and (p_note is null or length(trim(p_note)) < 5) then
+    raise exception 'A rejection reason of at least 5 characters is required.'; end if;
   select * into v_batch from public.inventory_batches where id = p_batch_id for update;
   if not found or v_batch.moderation_status <> 'pending_review' then
     raise exception 'Submission is missing or no longer pending review'; end if;
@@ -613,5 +618,5 @@ revoke update (is_published) on public.inventory_batches from authenticated;
 create policy "Admins read pending inventory photo evidence" on storage.objects
   for select to authenticated using (
     bucket_id = 'inventory-photos'
-    and (select auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
+    and (select auth.jwt() -> 'app_metadata' ->> 'role') in ('admin', 'super_admin')
   );

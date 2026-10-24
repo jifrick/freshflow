@@ -21,6 +21,9 @@ export interface InventoryBatch {
   photoPath?: string | null
   isPublished?: boolean
   archivedAt?: string | null
+  moderationStatus?: 'draft' | 'pending_review' | 'approved' | 'rejected'
+  moderationSubmittedAt?: string | null
+  sellerPhone?: string | null
 }
 
 export interface BuyerDemand {
