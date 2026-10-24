@@ -1,5 +1,5 @@
 export type Unit = 'kg' | 'crate' | 'box'
-export type BatchStatus = 'available' | 'reserved' | 'partially_sold' | 'completed'
+export type BatchStatus = 'available' | 'at_risk' | 'reserved' | 'partially_sold' | 'completed' | 'unavailable'
 export type DecisionStatus = 'needs_review' | 'approved' | 'completed'
 
 export interface InventoryBatch {
@@ -13,17 +13,23 @@ export interface InventoryBatch {
   quality: 'Premium' | 'Good' | 'Needs sorting'
   askingPrice: number | null
   purchaseCost: number | null
+  /** Operational availability time; never used as a harvest-age proxy. */
   availableAt: string
+  harvestedOrPurchasedAt: string | null
   freshnessHours: number | null
   status: BatchStatus
   photoPath?: string | null
+  isPublished?: boolean
+  archivedAt?: string | null
 }
 
 export interface BuyerDemand {
   id: string
+  ownerId?: string
   buyerName: string
   produce: string
   quantity: number
+  fulfilledQuantity?: number
   unit: Unit
   maxPrice: number | null
   location: string
@@ -63,4 +69,5 @@ export interface RecordedOutcome {
   unitPrice: number
   netProceeds: number
   recordedAt: string
+  verificationStatus?: 'seller_reported' | 'buyer_confirmed'
 }

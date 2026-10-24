@@ -27,3 +27,6 @@ enable_signup = true
 enabled = false
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+
+[functions.analyze-inventory]
+verify_jwt = true

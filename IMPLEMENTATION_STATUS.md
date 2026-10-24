@@ -1,21 +1,38 @@
 # FreshFlow implementation status
 
-**Milestone:** first runnable vertical slice
+**Current milestone:** Startup showcase MVP
 
-- [x] Repository checked; existing `origin` remote preserved; no source files or PRD artifact existed at start.
-- [x] React, TypeScript, Vite scaffold with pinned dependencies and environment placeholders.
-- [x] Responsive workspace UI with a clearly labeled local preview mode.
-- [x] Deterministic matching, freshness priority, economics, and stock rules with unit tests authored.
-- [x] Four Supabase migrations applied to the active `freshflow` project: core tables/RLS, private transaction RPCs/indexes, seller visibility for fulfilled requirements, and private inventory photo storage.
-- [x] Private `inventory-photos` Storage bucket with owner-folder RLS and upload size/MIME limits applied.
-- [x] Seller offer submission, separate buyer acceptance, and seller handover recording path implemented.
-- [x] Database concurrency, row access, and Storage access integration tests authored; they require two isolated account tokens (and a test-only service role key for cleanup).
-- [x] TypeScript, lint, deterministic unit tests, production build, and secret-pattern check pass (6 tests passed; 3 live integration tests skipped without isolated credentials).
-- [x] Supabase security advisor reports no findings; database tables all have RLS enabled.
-- [x] Existing GitHub remote and Cloudflare-related setup were preserved; no Cloudflare/Vercel/DNS configuration was present in the repository.
-- [ ] Google Cloud OAuth client settings/provider status and authorized callback URI could not be inspected; two-user DB/Storage tests require isolated access tokens.
-- [ ] Cloudflare account settings and production DNS/hosting role could not be inspected; repository contains no Cloudflare or Vercel deployment configuration.
+## Implemented in this workspace
 
-**Important boundary:** Preview records are examples and never indicate actual demand, completed transactions, or recovered food. Live economic comparisons remain incomplete until every cost and delivery feasibility are confirmed. The Supabase project currently contains schema only, with no seeded records.
+- Added a public-facing startup landing page with mission, supply-chain problem, product workflow, business-model hypotheses, intended impact measurement, roadmap, and demo CTA.
+- Added a four-step workflow and an explicit boundary between implemented showcase capabilities and proposed live-network capabilities.
+- Added a separate `ShowcaseLanding` visitor entry point; no sign-in or Supabase settings are needed to explore the sample workflow.
+- Added explicit demo-session isolation. Demo mutations are local browser state; demo approval, offer acceptance, and outcome actions do not call Supabase transaction RPCs.
+- Added a standalone simulated admin review walkthrough with pending/approved/rejected states, details, confirmation, and restart. It has no Supabase dependency.
+- Added an optional live admin screen calling protected list/review RPCs. It is shown only for the trusted admin claim, and the migration checks that claim server-side. The path is not live-verified.
+- Made scenario freshness and demand deadlines relative to demo start, while missing harvest information remains unknown.
+- Reused deterministic matching, freshness prioritisation, and net-proceeds calculations for the dashboard and decision list.
+- Marked dashboard/demo outputs as illustrative and separated simulated outcomes from buyer-confirmed outcomes.
+- Preserved the existing Supabase/Auth/Storage implementation and added a pending additive migration for private inventory purchase costs, freshness date fields, lifecycle operations, offer events, outcome metadata, and admin moderation RPCs.
+- Left the migration-history mismatch unresolved after inspection: remote history was previously observed through `20261023210157`; local photo migration remains `20261024000100`. SQL equivalence has not been established, so the file was not renamed to claim reconciliation.
+- Updated README for public demo usage, live-mode boundaries, Cloudflare direction, and migration caution.
 
-**Latest checks:** `npm run typecheck`, `npm run lint`, `npm test` (6 passed, 3 live integration tests skipped pending isolated credentials), `npm run build`, secret-pattern scan, and Supabase security advisor (no findings). Live Supabase inspection confirmed the private 5 MB `inventory-photos` bucket and owner-folder SELECT/INSERT/DELETE policies. Google OAuth callback equality and real sign-in remain unverified because provider/Google Cloud settings were not accessible.
+## Verification performed
+
+- `npm run typecheck` — passed.
+- `npm run lint` — passed.
+- `npm test` — passed: 12 unit tests; 3 live integration tests skipped because isolated credentials were not configured.
+- `npm run build` — passed.
+- `git diff --check` — passed.
+- `src/domain/sessionBoundary.test.ts` covers the explicit demo/live mutation gate; database admin authorization checks remain credential-gated.
+- No browser UI surface was available for visual inspection in this session.
+- No database migration was applied. The new migration has not been parsed or executed by PostgreSQL; do not treat live admin review, publish moderation, cost privacy, or other changed live workflows as verified.
+- Google OAuth, Cloudflare account settings, cross-user RLS, Storage isolation, and live transaction operations remain unverified.
+
+## Migration and operational boundary
+
+The last available remote migration history contained four versions through `20261023210157`; the local photo migration remains `20261024000100`. Their SQL equivalence has not been established. `20261024000200_mvp_integrity.sql` is pending and unvalidated. Compare the ledger and deployed objects first, then validate against an isolated database that matches remote state. Do not replay or rename the photo migration, reset production, or push migrations before that review. No production database change was made.
+
+## Deferred beyond the showcase
+
+Real partner integrations and quotations, production AI extraction/inspection, production Google OAuth verification, user-facing support/admin tooling, donation verification, payments, and independently attributed food-loss prevention metrics. Hindi and Tamil localization remain future work; current multilingual coverage is incomplete.
